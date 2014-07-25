@@ -38,7 +38,7 @@
  * holder.
  */
 /**
- * Jersey server-side spring 3 integration injection scopes related classes.
+ * Jersey server-side spring 4 integration classes.
  *
  */
-package org.glassfish.jersey.server.spring.scope;
+package org.glassfish.jersey.server.spring;

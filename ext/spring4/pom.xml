@@ -49,13 +49,13 @@
         <version>2.11</version>
     </parent>
 
-    <artifactId>jersey-spring3</artifactId>
-    <name>jersey-spring3</name>
+    <artifactId>jersey-spring4</artifactId>
+    <name>jersey-spring4</name>
 
     <packaging>jar</packaging>
 
     <description>
-        Jersey extension module providing support for Spring 3 integration.
+        Jersey extension module providing support for Spring 4 integration.
     </description>
 
     <dependencies>
@@ -110,13 +110,13 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-beans</artifactId>
-            <version>${spring3.version}</version>
+            <version>${spring4.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
-            <version>${spring3.version}</version>
+            <version>${spring4.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>commons-logging</groupId>
@@ -128,7 +128,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
-            <version>${spring3.version}</version>
+            <version>${spring4.version}</version>
             <scope>compile</scope>
         </dependency>
 
@@ -149,7 +149,7 @@
     </dependencies>
 
     <properties>
-        <spring3.version>3.2.3.RELEASE</spring3.version>
+        <spring4.version>4.0.6.RELEASE</spring4.version>
     </properties>
 
     <build>
