@@ -43,6 +43,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 
 import org.glassfish.hk2.api.DynamicConfiguration;
@@ -51,17 +52,21 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.ServiceBindingBuilder;
 import org.glassfish.jersey.internal.inject.Injections;
-import org.glassfish.jersey.server.ApplicationHandler;
 import org.glassfish.jersey.server.spi.ComponentProvider;
 
 import org.jvnet.hk2.spring.bridge.api.SpringBridge;
 import org.jvnet.hk2.spring.bridge.api.SpringIntoHK2Bridge;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.ConfigurableWebApplicationContext;
+import org.springframework.web.context.ConfigurableWebEnvironment;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
+import org.springframework.web.context.support.XmlWebApplicationContext;
 
 /**
  * Custom ComponentProvider class.
@@ -73,9 +78,6 @@ import org.springframework.web.context.support.WebApplicationContextUtils;
 public class SpringComponentProvider implements ComponentProvider {
 
     private static final Logger LOGGER = Logger.getLogger(SpringComponentProvider.class.getName());
-    private static final String DEFAULT_CONTEXT_CONFIG_LOCATION = "applicationContext.xml";
-    private static final String PARAM_CONTEXT_CONFIG_LOCATION = "contextConfigLocation";
-    private static final String PARAM_SPRING_CONTEXT = "contextConfig";
 
     private volatile ServiceLocator locator;
     private volatile ApplicationContext ctx;
@@ -89,18 +91,36 @@ public class SpringComponentProvider implements ComponentProvider {
         }
 
         ServletContext sc = locator.getService(ServletContext.class);
+        ServletConfig config = locator.getService(ServletConfig.class);
 
-        if(sc != null) {
-            // servlet container
-            ctx = WebApplicationContextUtils.getWebApplicationContext(sc);
-        } else {
-            // non-servlet container
-            ctx = createSpringContext();
-        }
-        if(ctx == null) {
-            LOGGER.severe(LocalizationMessages.CTX_LOOKUP_FAILED());
-            return;
-        }
+        WebApplicationContext rootContext = WebApplicationContextUtils
+				.getRequiredWebApplicationContext(sc);
+
+		WebApplicationContext wac = null;
+
+		ConfigurableWebApplicationContext cwac = (ConfigurableWebApplicationContext) BeanUtils
+				.instantiateClass(XmlWebApplicationContext.class);
+
+		cwac.setParent(rootContext);
+		cwac.setConfigLocation("/WEB-INF/spring/jaxrs/*.xml");
+
+		cwac.setId("jaxrs-context");
+		cwac.setServletContext(sc);
+		cwac.setServletConfig(config);
+		cwac.setNamespace(config.getServletName());
+
+		ConfigurableEnvironment env = cwac.getEnvironment();
+
+		if (env instanceof ConfigurableWebEnvironment) {
+			((ConfigurableWebEnvironment) env).initPropertySources(
+					sc, config);
+		}
+
+		cwac.refresh();
+
+		wac = cwac;
+		this.ctx = wac;
+
         LOGGER.config(LocalizationMessages.CTX_LOOKUP_SUCESSFUL());
 
         // initialize HK2 spring-bridge
@@ -146,24 +166,6 @@ public class SpringComponentProvider implements ComponentProvider {
     @Override
     public void done() {
     }
-
-    private ApplicationContext createSpringContext() {
-        ApplicationHandler applicationHandler = locator.getService(ApplicationHandler.class);
-        ApplicationContext springContext = (ApplicationContext) applicationHandler.getConfiguration().getProperty(PARAM_SPRING_CONTEXT);
-        if (springContext == null) {
-            String contextConfigLocation = (String) applicationHandler.getConfiguration().getProperty(PARAM_CONTEXT_CONFIG_LOCATION);
-            springContext = createXmlSpringConfiguration(contextConfigLocation);
-        }
-        return springContext;
-    }
-
-    private ApplicationContext createXmlSpringConfiguration(String contextConfigLocation) {
-        if (contextConfigLocation == null) {
-            contextConfigLocation = DEFAULT_CONTEXT_CONFIG_LOCATION;
-        }
-        return ctx = new ClassPathXmlApplicationContext(contextConfigLocation, "jersey-spring-applicationContext.xml");
-    }
-
 
     private static class SpringManagedBeanFactory implements Factory {
         private final ApplicationContext ctx;
